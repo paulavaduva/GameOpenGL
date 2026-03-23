@@ -8,6 +8,8 @@
 using namespace std;
 
 unsigned int texGround, texSky;
+unsigned int texRoad;
+unsigned int texBuilding;
 
 unsigned int loadTexture(const char* path) {
     unsigned int textureID;
@@ -44,6 +46,8 @@ void initTextures() {
     glEnable(GL_TEXTURE_2D);
     texGround = loadTexture("ground.jpg"); 
     texSky = loadTexture("sky2.jpg");      
+    texRoad = loadTexture("road.jpg");
+    texBuilding = loadTexture("windows.jpg");
 }
 
 void drawGround(float size) {
@@ -141,5 +145,198 @@ void drawRelief(float size) {
             }
         }
         glEnd();
+    }
+}
+
+
+// calculeaza inaltimea in orice punct 
+float getTerrainHeight(float x, float z) {
+    float y = -1.0f;
+    // lista de dealuri
+    static vector<Hill> hills = {
+        { 0.0f,   -60.0f, 50.0f, 15.0f },
+        { 80.0f,  20.0f,  40.0f, 10.0f },
+        {-70.0f,  50.0f,  45.0f, 12.0f },
+        { 40.0f,  -90.0f, 30.0f, 7.0f  },
+        {-100.0f, -30.0f, 60.0f, 18.0f }
+    };
+
+    for (const auto& h : hills) {
+        float dist = sqrt(pow(x - h.x, 2) + pow(z - h.z, 2));
+        if (dist < h.radius) {
+            y += h.height * 0.5f * (1.0f + cos(3.1415f * dist / h.radius));
+        }
+    }
+    return y;
+}
+
+
+void drawCircuit(float innerRadius, float outerRadius, int segments) {
+    glBindTexture(GL_TEXTURE_2D, texRoad); 
+    glColor3f(1.0f, 1.0f, 1.0f);
+
+    glBegin(GL_QUAD_STRIP);
+    for (int i = 0; i <= segments; i++) {
+        float angle = 2.0f * 3.14159f * (float)i / (float)segments;
+        float stretchZ = 1.5f;
+
+        // punct interior
+        float xIn = innerRadius * cos(angle);
+        float zIn = innerRadius * sin(angle) * stretchZ;
+        float yIn = getTerrainHeight(xIn, zIn) + 0.15f; 
+
+        // punct exterior
+        float xOut = outerRadius * cos(angle);
+        float zOut = outerRadius * sin(angle) * stretchZ;
+        float yOut = getTerrainHeight(xOut, zOut) + 0.15f;
+
+        // texturare
+        glTexCoord2f((float)i * 0.5f, 0.0f); glVertex3f(xIn, yIn, zIn);
+        glTexCoord2f((float)i * 0.5f, 1.0f); glVertex3f(xOut, yOut, zOut);
+    }
+    glEnd();
+}
+
+void drawTree(float x, float z) {
+    float y = getTerrainHeight(x, z);
+
+    glDisable(GL_TEXTURE_2D);
+
+    glPushMatrix();
+    glTranslatef(x, y, z);
+
+    // trunchiul (maro)
+    glColor3f(0.3f, 0.15f, 0.05f);
+    glPushMatrix();
+    glRotatef(-90, 1, 0, 0);
+    GLUquadric* trunk = gluNewQuadric();
+    gluCylinder(trunk, 1.2, 1.0, 10.0, 16, 1);
+    glPopMatrix();
+
+    // coroana (verde)
+    glColor3f(0.0f, 0.35f, 0.0f);
+    glPushMatrix();
+    glTranslatef(0, 7.0, 0);
+    glRotatef(-90, 1, 0, 0);
+    glutSolidCone(8.0, 20.0, 16, 1);
+    glPopMatrix();
+
+    glPopMatrix();
+
+    glEnable(GL_TEXTURE_2D);
+
+    glColor3f(1.0f, 1.0f, 1.0f); // reset la alb
+}
+
+void drawBuilding(float x, float z, float width, float height, float depth) {
+    float y = getTerrainHeight(x, z);
+
+    float foundation = 20.0f; //
+
+    glPushMatrix();
+    glTranslatef(x, y, z); 
+
+    glBindTexture(GL_TEXTURE_2D, texBuilding);
+    glColor3f(1.0f, 1.0f, 1.0f); 
+
+    float w = width / 2.0f;
+    float d = depth / 2.0f;
+    float h = height;
+    float b = -foundation; //
+
+    // texturare
+    float repeatH = (height + foundation) / 20.0f;
+    float repeatW = width / 20.0f;
+
+    glBegin(GL_QUADS);
+    // fata
+    glTexCoord2f(0, 0); glVertex3f(-w, b, d);
+    glTexCoord2f(repeatW, 0); glVertex3f(w, b, d);
+    glTexCoord2f(repeatW, repeatH); glVertex3f(w, h, d);
+    glTexCoord2f(0, repeatH); glVertex3f(-w, h, d);
+
+    // spate
+    glTexCoord2f(0, 0); glVertex3f(-w, b, -d);
+    glTexCoord2f(repeatW, 0); glVertex3f(w, b, -d);
+    glTexCoord2f(repeatW, repeatH); glVertex3f(w, h, -d);
+    glTexCoord2f(0, repeatH); glVertex3f(-w, h, -d);
+
+    // dreapta
+    glTexCoord2f(0, 0); glVertex3f(w, b, -d);
+    glTexCoord2f(repeatW, 0); glVertex3f(w, b, d);
+    glTexCoord2f(repeatW, repeatH); glVertex3f(w, h, d);
+    glTexCoord2f(0, repeatH); glVertex3f(w, h, -d);
+
+    // stanga
+    glTexCoord2f(0, 0); glVertex3f(-w, b, -d);
+    glTexCoord2f(repeatW, 0); glVertex3f(-w, b, d);
+    glTexCoord2f(repeatW, repeatH); glVertex3f(-w, h, d);
+    glTexCoord2f(0, repeatH); glVertex3f(-w, h, -d);
+
+    // sus 
+    glTexCoord2f(0, 0); glVertex3f(-w, h, -d);
+    glTexCoord2f(1, 0); glVertex3f(w, h, -d);
+    glTexCoord2f(1, 1); glVertex3f(w, h, d);
+    glTexCoord2f(0, 1); glVertex3f(-w, h, d);
+    glEnd();
+
+    glPopMatrix();
+}
+
+// verifica daca un punct se afla pe drum
+bool isPointOnCircuit(float x, float z, float innerR, float outerR) {
+    float stretchZ = 1.5f;
+    // calculam distanta fata de centru in contextul ovalului
+    float dist = sqrt(pow(x, 2) + pow(z / stretchZ, 2));
+
+    float safetyMargin = 15.0f;
+
+    if (dist >= (innerR - safetyMargin) && dist <= (outerR + safetyMargin)) {
+        return true; 
+    }
+    return false;
+}
+
+struct StaticObj {
+    float x, z;
+    int type;
+};
+
+void drawStaticObjects() {
+    float innerR = 40.0f;
+    float outerR = 55.0f;
+    static vector<StaticObj> worldObjects;
+    static bool generated = false;
+
+    if (!generated) {
+        float mapSize = 180.0f;
+        float step = 40.0f;
+
+        for (float x = -mapSize; x <= mapSize; x += step) {
+            for (float z = -mapSize; z <= mapSize; z += step) {
+                float finalX = x + (rand() % 14 - 7);
+                float finalZ = z + (rand() % 14 - 7);
+
+                if (!isPointOnCircuit(finalX, finalZ, innerR, outerR)) {
+                    StaticObj obj;
+                    obj.x = finalX;
+                    obj.z = finalZ;
+                    // distributie: 40% cladiri mari, 40% mici, 20% copaci
+                    int r = rand() % 10;
+                    if (r < 2) obj.type = 0;      // copac
+                    else if (r < 6) obj.type = 1; // bloc mare
+                    else obj.type = 2;            // bloc mic
+
+                    worldObjects.push_back(obj);
+                }
+            }
+        }
+        generated = true;
+    }
+
+    for (const auto& obj : worldObjects) {
+        if (obj.type == 0) drawTree(obj.x, obj.z);
+        else if (obj.type == 1) drawBuilding(obj.x, obj.z, 20.0f, 65.0f, 20.0f);
+        else drawBuilding(obj.x, obj.z, 15.0f, 25.0f, 15.0f);
     }
 }

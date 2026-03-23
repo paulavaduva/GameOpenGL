@@ -15,7 +15,10 @@ void display() {
     updateCamera(); 
 
     drawSkybox(150.0f); 
-    drawRelief(150.0f);   
+    drawRelief(150.0f); 
+
+    drawCircuit(40.0f, 55.0f, 500);
+    drawStaticObjects();
 
     glutSwapBuffers();
 }

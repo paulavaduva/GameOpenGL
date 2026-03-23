@@ -140,9 +140,11 @@
     <ClInclude Include="stb_image.h" />
   </ItemGroup>
   <ItemGroup>
+    <Image Include="road.jpg" />
     <Image Include="sky.jpg" />
     <Image Include="ground.jpg" />
     <Image Include="sky2.jpg" />
+    <Image Include="windows.jpg" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
