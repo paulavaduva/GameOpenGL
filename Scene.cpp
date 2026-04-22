@@ -111,7 +111,6 @@ void drawRelief(float size) {
     glBindTexture(GL_TEXTURE_2D, texGround);
     glColor3f(1.0f, 1.0f, 1.0f);
 
-    // PASUL 1: Cre?tem rezolu?ia la 120 pentru ca dealurile s? fie mai fine
     int resolution = 150;
     float step = (size * 2) / resolution;
 
@@ -123,13 +122,12 @@ void drawRelief(float size) {
                 float z = -size + j * step;
                 float y = getTerrainHeight(x, z);
 
-                // PASUL 2: Calcul?m umbra dealului (Normalele)
-                // Calcul?m panta dealului în acel punct
+
                 float hL = getTerrainHeight(x - 0.1f, z);
                 float hR = getTerrainHeight(x + 0.1f, z);
                 float hD = getTerrainHeight(x, z - 0.1f);
                 float hU = getTerrainHeight(x, z + 0.1f);
-                // Normala aproximativ?: (-pantaX, 1, -pantaZ)
+
                 glNormal3f(hL - hR, 1.0f, hD - hU);
 
                 glTexCoord2f(x * 0.05f, z * 0.05f);
@@ -139,7 +137,7 @@ void drawRelief(float size) {
         glEnd();
     }
 }
-// Func?ie pentru stâlpi de iluminat
+
 void drawLightPole(float x, float z) {
     float y = getTerrainHeight(x, z);
     bool isShadow = !glIsEnabled(GL_LIGHTING);
@@ -147,7 +145,6 @@ void drawLightPole(float x, float z) {
     glPushMatrix();
     glTranslatef(x, y, z);
 
-    // Stâlpul (nu are textur?)
     glDisable(GL_TEXTURE_2D);
     if (!isShadow) glColor3f(0.2f, 0.2f, 0.22f);
 
@@ -157,7 +154,6 @@ void drawLightPole(float x, float z) {
         gluCylinder(pole, 0.4, 0.3, 15.0, 12, 1);
     glPopMatrix();
 
-    // Becul (Sursa de lumin? vizual?)
     if (!isShadow) {
         glTranslatef(0, 15.0, 0);
         glColor3f(1.0f, 1.0f, 0.7f);
@@ -172,11 +168,11 @@ float getTerrainHeight(float x, float z) {
     float y = -1.0f;
     // lista de dealuri
     static vector<Hill> hills = {
-        { 0.0f,   -60.0f, 50.0f, 3.0f }, // În?l?ime 10
-        { 80.0f,  20.0f,  40.0f, 3.0f }, // În?l?ime 10
-        {-70.0f,  50.0f,  45.0f, 3.0f }, // În?l?ime 10
-        { 40.0f,  -90.0f, 30.0f, 3.0f }, // În?l?ime 10
-        {-100.0f, -30.0f, 60.0f, 3.0f }  // În?l?ime 10
+        { 0.0f,   -60.0f, 50.0f, 3.0f }, 
+        { 80.0f,  20.0f,  40.0f, 3.0f }, 
+        {-70.0f,  50.0f,  45.0f, 3.0f },
+        { 40.0f,  -90.0f, 30.0f, 3.0f }, 
+        {-100.0f, -30.0f, 60.0f, 3.0f }  
     };
 
     for (const auto& h : hills) {
@@ -191,13 +187,13 @@ float getTerrainHeight(float x, float z) {
 
 void drawCircuit(float innerRadius, float outerRadius, int segments) {
     bool isShadow = !glIsEnabled(GL_LIGHTING);
-    if (isShadow) return; // Drumul nu trebuie s? lase umbr?, cum ai cerut
+    if (isShadow) return; 
 
     glBindTexture(GL_TEXTURE_2D, texRoad);
     glColor3f(1.0f, 1.0f, 1.0f);
 
     glEnable(GL_POLYGON_OFFSET_FILL);
-    glPolygonOffset(-1.0f, -1.0f); // "Tragem" drumul spre camer?
+    glPolygonOffset(-1.0f, -1.0f);
 
     glBegin(GL_QUAD_STRIP);
     for (int i = 0; i <= segments; i++) {
@@ -206,7 +202,7 @@ void drawCircuit(float innerRadius, float outerRadius, int segments) {
 
         float xIn = innerRadius * cos(angle);
         float zIn = innerRadius * sin(angle) * stretchZ;
-        float yIn = getTerrainHeight(xIn, zIn) + 0.4f; // Ridic?m drumul cu 0.6
+        float yIn = getTerrainHeight(xIn, zIn) + 0.4f; 
 
         float xOut = outerRadius * cos(angle);
         float zOut = outerRadius * sin(angle) * stretchZ;
