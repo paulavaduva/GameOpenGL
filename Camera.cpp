@@ -68,3 +68,41 @@ void updateCamera() {
         posX + dirX, posY + dirY, posZ + dirZ,
         0.0f, 1.0f, 0.0f);
 }
+
+void handleKeyboard(unsigned char key, int x, int y) {
+    float speed = 1.5f;
+
+    float horizontalLength = sqrt(dirX * dirX + dirZ * dirZ);
+    float fwdX = dirX / horizontalLength;
+    float fwdZ = dirZ / horizontalLength;
+
+    float rightX = -fwdZ;
+    float rightZ = fwdX;
+
+    switch (key) {
+    case 'w': case 'W': 
+        posX += fwdX * speed;
+        posZ += fwdZ * speed;
+        break;
+    case 's': case 'S': 
+        posX -= fwdX * speed;
+        posZ -= fwdZ * speed;
+        break;
+    case 'a': case 'A': 
+        posX -= rightX * speed;
+        posZ -= rightZ * speed;
+        break;
+    case 'd': case 'D': 
+        posX += rightX * speed;
+        posZ += rightZ * speed;
+        break;
+    case 'q': case 'Q': 
+        posY -= speed;
+        break;
+    case 'e': case 'E':
+        posY += speed;
+        break;
+    }
+
+    glutPostRedisplay();
+}

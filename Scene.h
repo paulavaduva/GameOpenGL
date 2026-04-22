@@ -16,4 +16,8 @@ void drawBuilding(float x, float z, float width, float height, float depth);
 void drawStaticObjects();
 bool isPointOnCircuit(float x, float z, float innerR, float outerR);
 
+void calculateShadowMatrix(float shadowMat[16], float groundPlane[4], float lightPos[4]);
+
+void drawLightPole(float x, float z);
+
 #endif
