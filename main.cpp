@@ -5,20 +5,86 @@
 
 using namespace std;
 
+float shadowMat[16];
+float groundPlane[] = { 0.0f, 1.0f, 0.0f, -2.9f };
+
+float moonPos[] = { 100.0f, 100.0f, 50.0f, 1.0f }; // luna 
+float polePos[] = { -40.0f, 15.0f, -40.0f, 1.0f }; // stalpul
+
+void initLighting() {
+    glEnable(GL_LIGHTING);
+    glEnable(GL_LIGHT0); // luna
+    glEnable(GL_LIGHT1); // stalpul
+    glEnable(GL_COLOR_MATERIAL);
+
+    float ambient[] = { 0.2f, 0.2f, 0.3f, 1.0f };
+
+    float diffuseMoon[] = { 0.4f, 0.4f, 0.5f, 1.0f };
+
+    glLightfv(GL_LIGHT0, GL_AMBIENT, ambient);
+    glLightfv(GL_LIGHT0, GL_DIFFUSE, diffuseMoon);
+    
+    float diffusePole[] = { 1.0f, 1.0f, 0.8f, 1.0f };
+    glLightfv(GL_LIGHT1, GL_DIFFUSE, diffusePole);
+}
+
 void display() {
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
     glLoadIdentity();
+    updateCamera();
 
-    // resetare culoare la alb inainte de a desena texturile
+    glLightfv(GL_LIGHT0, GL_POSITION, moonPos);
+    glLightfv(GL_LIGHT1, GL_POSITION, polePos); 
+
+    glDisable(GL_LIGHTING);
+    drawSkybox(150.0f);
+
+    glEnable(GL_LIGHTING);
+
+
+    drawRelief(150.0f);
+
     glColor3f(1.0f, 1.0f, 1.0f);
-
-    updateCamera(); 
-
-    drawSkybox(150.0f); 
-    drawRelief(150.0f); 
-
     drawCircuit(40.0f, 55.0f, 500);
+
+    
+    glDisable(GL_LIGHTING);
+    glDisable(GL_TEXTURE_2D);
+
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    glDepthMask(GL_FALSE);
+    glEnable(GL_POLYGON_OFFSET_FILL);
+    glPolygonOffset(-2.0f, -2.0f);
+    glColor4f(0.05f, 0.05f, 0.1f, 0.15f);
+
+
+    calculateShadowMatrix(shadowMat, groundPlane, moonPos);
+
+    glPushMatrix();
+        glMultMatrixf(shadowMat);
+        drawStaticObjects(); 
+        drawLightPole(polePos[0], polePos[2]);
+    glPopMatrix();
+
+
+    calculateShadowMatrix(shadowMat, groundPlane, polePos);
+
+    glPushMatrix();
+        glMultMatrixf(shadowMat);
+        drawStaticObjects();
+        drawLightPole(polePos[0], polePos[2]);
+    glPopMatrix();
+
+    glDepthMask(GL_TRUE);
+    glDisable(GL_BLEND);
+    glDisable(GL_POLYGON_OFFSET_FILL);
+    glEnable(GL_TEXTURE_2D);
+    glEnable(GL_LIGHTING);
+
     drawStaticObjects();
+    drawLightPole(polePos[0], polePos[2]);
 
     glutSwapBuffers();
 }
@@ -55,14 +121,15 @@ int main(int argc, char** argv) {
 
     glEnable(GL_DEPTH_TEST);
     initTextures();
-    initCamera(); 
+    initCamera();
+    initLighting();
 
     glutDisplayFunc(display);
     glutReshapeFunc(reshape);
 
     glutPassiveMotionFunc(handleMouseMove); 
     glutSetCursor(GLUT_CURSOR_NONE); // ascunde cursor mouse
-
+    glutKeyboardFunc(handleKeyboard);
     glutMouseWheelFunc(mouseWheel);
 
     glutMainLoop();
