@@ -6,7 +6,7 @@
 using namespace std;
 
 float shadowMat[16];
-float groundPlane[] = { 0.0f, 1.0f, 0.0f, -2.9f };
+float groundPlane[] = { 0.0f, 1.0f, 0.0f, 1.0f };
 
 float moonPos[] = { 100.0f, 100.0f, 50.0f, 1.0f }; // luna 
 float polePos[] = { -40.0f, 15.0f, -40.0f, 1.0f }; // stalpul
@@ -34,52 +34,50 @@ void display() {
     updateCamera();
 
     glLightfv(GL_LIGHT0, GL_POSITION, moonPos);
-    glLightfv(GL_LIGHT1, GL_POSITION, polePos); 
+    glLightfv(GL_LIGHT1, GL_POSITION, polePos);
 
     glDisable(GL_LIGHTING);
     drawSkybox(150.0f);
 
     glEnable(GL_LIGHTING);
-
-
     drawRelief(150.0f);
+
 
     glColor3f(1.0f, 1.0f, 1.0f);
     drawCircuit(40.0f, 55.0f, 500);
 
-    
     glDisable(GL_LIGHTING);
     glDisable(GL_TEXTURE_2D);
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
+    glDisable(GL_DEPTH_TEST);
     glDepthMask(GL_FALSE);
-    glEnable(GL_POLYGON_OFFSET_FILL);
-    glPolygonOffset(-2.0f, -2.0f);
+
     glColor4f(0.05f, 0.05f, 0.1f, 0.15f);
 
 
     calculateShadowMatrix(shadowMat, groundPlane, moonPos);
-
-    glPushMatrix();
-        glMultMatrixf(shadowMat);
-        drawStaticObjects(); 
-        drawLightPole(polePos[0], polePos[2]);
-    glPopMatrix();
-
-
-    calculateShadowMatrix(shadowMat, groundPlane, polePos);
-
     glPushMatrix();
         glMultMatrixf(shadowMat);
         drawStaticObjects();
         drawLightPole(polePos[0], polePos[2]);
     glPopMatrix();
 
+
+    float actualPolePos[] = { polePos[0], getTerrainHeight(polePos[0], polePos[2]) + 15.0f, polePos[2], 1.0f };
+    calculateShadowMatrix(shadowMat, groundPlane, actualPolePos);
+    glPushMatrix();
+        glMultMatrixf(shadowMat);
+        drawStaticObjects();
+        drawLightPole(polePos[0], polePos[2]);
+    glPopMatrix();
+
+    glEnable(GL_DEPTH_TEST);
     glDepthMask(GL_TRUE);
+
     glDisable(GL_BLEND);
-    glDisable(GL_POLYGON_OFFSET_FILL);
     glEnable(GL_TEXTURE_2D);
     glEnable(GL_LIGHTING);
 
