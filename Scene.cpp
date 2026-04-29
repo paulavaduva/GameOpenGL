@@ -4,12 +4,25 @@
 #include <iostream>
 #include <cmath>
 #include <vector>
+#include <ctime>
 
 using namespace std;
 
 unsigned int texGround, texSky;
 unsigned int texRoad;
 unsigned int texBuilding;
+
+vector<StaticObj> worldObjects; 
+static bool generated = false;
+extern float polePos[];
+
+vector<MovingObj> randomNPCs;
+static bool npcsGenerated = false;
+
+vector<CircuitCarObj> circuitCars;
+static bool circuitInit = false;
+
+extern float carX, carZ;
 
 unsigned int loadTexture(const char* path) {
     unsigned int textureID;
@@ -324,16 +337,56 @@ bool isPointOnCircuit(float x, float z, float innerR, float outerR) {
     return false;
 }
 
-struct StaticObj {
-    float x, z;
-    int type;
-};
+bool checkMovingCollision(float x1, float z1, float r1, float x2, float z2, float r2) {
+    float dist = sqrt(pow(x1 - x2, 2) + pow(z1 - z2, 2));
+    return dist < (r1 + r2);
+}
+bool checkStaticCollision(float x, float z, float radius) {
+    // coliziune cu Obiecte Statice
+    for (const auto& obj : worldObjects) {
+        float objW, objD;
+        if (obj.type == 0) { objW = 2.0f; objD = 2.0f; } // copac
+        else if (obj.type == 1) { objW = 20.0f; objD = 20.0f; } // bloc mare
+        else if (obj.type == 2) { objW = 15.0f; objD = 15.0f; } // bloc mic
+        else continue;
+
+        if (x > (obj.x - objW / 2 - radius) && x < (obj.x + objW / 2 + radius) &&
+            z >(obj.z - objD / 2 - radius) && z < (obj.z + objD / 2 + radius)) {
+            return true;
+        }
+    }
+
+    // coliziune cu stalpul
+    float poleHitbox = 1.5f;
+    if (checkMovingCollision(x, z, radius, polePos[0], polePos[2], poleHitbox)) {
+        return true;
+    }
+
+    return false;
+}
+
+bool checkCollision(float x, float z) {
+    float carSize = 2.5f;
+
+    // verificam obiectele fixe
+    if (checkStaticCollision(x, z, carSize)) return true;
+
+    // verificam NPC-urile aleatorii
+    for (const auto& npc : randomNPCs) {
+        if (checkMovingCollision(x, z, carSize, npc.x, npc.z, 2.0f)) return true;
+    }
+
+    // verificam masinile de pe circuit
+    for (const auto& cCar : circuitCars) {
+        if (checkMovingCollision(x, z, carSize, cCar.x, cCar.z, 2.5f)) return true;
+    }
+
+    return false;
+}
 
 void drawStaticObjects() {
     float innerR = 40.0f;
     float outerR = 55.0f;
-    static vector<StaticObj> worldObjects;
-    static bool generated = false;
 
     if (!generated) {
         float mapSize = 180.0f;
@@ -380,5 +433,183 @@ void calculateShadowMatrix(float shadowMat[16], float groundPlane[4], float ligh
             shadowMat[j * 4 + i] = -lightPos[i] * groundPlane[j];
             if (i == j) shadowMat[j * 4 + i] += dot;
         }
+    }
+}
+
+void drawCar(float x, float z, float angle) {
+    float y = getTerrainHeight(x, z);
+    bool isShadow = !glIsEnabled(GL_LIGHTING);
+
+    glPushMatrix();
+    glTranslatef(x, y + 1.0f, z); 
+    glRotatef(angle, 0.0f, 1.0f, 0.0f);
+
+    if (!isShadow) glDisable(GL_TEXTURE_2D);
+
+    if (!isShadow) glColor3f(1.0f, 0.0f, 0.0f);
+    glPushMatrix();
+    glScalef(4.0f, 2.0f, 8.0f);
+    glutSolidCube(1.0);
+    glPopMatrix();
+
+    if (!isShadow) {
+        glColor3f(0.2f, 0.2f, 0.2f);
+        glPushMatrix();
+        glTranslatef(0.0f, 1.5f, -1.0f);
+        glScalef(3.5f, 1.5f, 4.0f);
+        glutSolidCube(1.0);
+        glPopMatrix();
+    }
+
+    if (!isShadow) {
+        glEnable(GL_TEXTURE_2D);
+        glColor3f(1.0f, 1.0f, 1.0f);
+    }
+    glPopMatrix();
+}
+
+void updateRandomObjects() {
+    if (!npcsGenerated) {
+        srand(time(NULL));
+        for (int i = 0; i < 5; i++) { // generam 5 obiecte
+            MovingObj npc;
+            npc.x = (rand() % 100) - 50.0f;
+            npc.z = (rand() % 100) - 50.0f;
+            npc.angle = (rand() % 360);
+            npc.speed = 0.3f;
+            npc.changeDirTimer = 0;
+            randomNPCs.push_back(npc);
+        }
+        npcsGenerated = true;
+    }
+
+    for (int i = 0; i < randomNPCs.size(); i++) {
+        auto& npc = randomNPCs[i];
+        // daca timer-ul a expirat, alegem o directie noua aleatorie
+        if (npc.changeDirTimer <= 0) {
+            npc.angle = (rand() % 360);
+            npc.changeDirTimer = 50 + (rand() % 100); // intre 50 si 150 de cadre
+        }
+
+        float rad = npc.angle * 3.14159f / 180.0f;
+        float nextX = npc.x + sin(rad) * npc.speed;
+        float nextZ = npc.z + cos(rad) * npc.speed;
+        float npcRad = 1.5f;
+
+        bool collision = false;
+
+        if (checkStaticCollision(nextX, nextZ, npcRad)) collision = true;
+
+        if (checkMovingCollision(nextX, nextZ, npcRad, carX, carZ, 2.5f)) collision = true;
+
+        for (int j = 0; j < randomNPCs.size(); j++) {
+            if (i == j) continue; 
+            if (checkMovingCollision(nextX, nextZ, npcRad, randomNPCs[j].x, randomNPCs[j].z, npcRad)) {
+                collision = true;
+                break;
+            }
+        }
+
+        for (const auto& cCar : circuitCars) {
+            if (checkMovingCollision(nextX, nextZ, npcRad, cCar.x, cCar.z, 2.0f)) {
+                collision = true;
+                break;
+            }
+        }
+
+        if (!collision) {
+            npc.x = nextX;
+            npc.z = nextZ;
+        }
+        else {
+            npc.changeDirTimer = 0;
+        }
+
+        npc.changeDirTimer--;
+
+        if (npc.x > 150) npc.x = -150; if (npc.x < -150) npc.x = 150;
+        if (npc.z > 150) npc.z = -150; if (npc.z < -150) npc.z = 150;
+
+        if (npc.x > 150) npc.x = -150;
+        if (npc.x < -150) npc.x = 150;
+        if (npc.z > 150) npc.z = -150;
+        if (npc.z < -150) npc.z = 150;
+    }
+}
+
+void drawMovingObjects() {
+    bool isShadow = !glIsEnabled(GL_LIGHTING);
+    for (const auto& npc : randomNPCs) {
+        float y = getTerrainHeight(npc.x, npc.z); 
+
+        glPushMatrix();
+        glTranslatef(npc.x, y + 1.5f, npc.z);
+        glRotatef(npc.angle, 0, 1, 0);
+
+        if (!isShadow) {
+            glDisable(GL_TEXTURE_2D);
+            glColor3f(0.0f, 0.7f, 0.8f); 
+        }
+
+        GLUquadric* quad = gluNewQuadric();
+        glRotatef(-90, 1, 0, 0);
+        gluCylinder(quad, 1.0, 1.0, 3.0, 12, 1);
+
+        glTranslatef(0, 0, 3.5f);
+        glutSolidSphere(0.8, 10, 10);
+
+        if (!isShadow) glEnable(GL_TEXTURE_2D);
+        glPopMatrix();
+    }
+}
+
+void updateCircuitCars() {
+    if (!circuitInit) {
+        circuitCars.push_back({ 0.0f, 0.01f, 43.0f }); 
+        circuitCars.push_back({ 3.14f, 0.012f, 52.0f }); 
+        circuitInit = true;
+    }
+
+    float stretchZ = 1.5f;
+    for (auto& car : circuitCars) {
+        car.angle += car.speed;
+        if (car.angle > 6.283f) car.angle -= 6.283f;
+
+        car.x = car.radius * cos(car.angle);
+        car.z = car.radius * sin(car.angle) * stretchZ;
+    }
+}
+
+void drawCircuitCars() {
+    bool isShadow = !glIsEnabled(GL_LIGHTING);
+    float stretchZ = 1.5f; 
+
+    for (const auto& car : circuitCars) {
+        float x = car.radius * cos(car.angle);
+        float z = car.radius * sin(car.angle) * stretchZ;
+
+        float y = getTerrainHeight(x, z) + 0.5f;
+
+
+        float dx = -car.radius * sin(car.angle);
+        float dz = car.radius * cos(car.angle) * stretchZ;
+        float rotation = atan2(dx, dz) * 180.0f / 3.14159f;
+
+        glPushMatrix();
+        glTranslatef(x, y, z);
+        glRotatef(rotation, 0, 1, 0);
+
+        if (!isShadow) {
+            glDisable(GL_TEXTURE_2D);
+            glColor3f(0.0f, 0.5f, 0.0f); 
+        }
+
+        glPushMatrix();
+        glScalef(3.0f, 1.5f, 6.0f);
+        glutSolidCube(1.0);
+        glPopMatrix();
+
+        if (!isShadow) glEnable(GL_TEXTURE_2D);
+        glPopMatrix();
     }
 }

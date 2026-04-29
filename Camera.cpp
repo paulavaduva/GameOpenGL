@@ -1,4 +1,5 @@
 #include "Camera.h"
+#include "Scene.h"
 #include <cmath>
 
 // pozitie fixa a camerei
@@ -12,6 +13,11 @@ float pitch = 0.0f;
 float dirX, dirY, dirZ;
 
 float fov = 90.0f;
+
+float carX = 0.0f, carZ = 0.0f, carAngle = 0.0f;
+bool isThirdPerson = false;
+
+bool specialKeys[256] = { false };
 
 void initCamera() {
     // calcul directie initiala
@@ -64,45 +70,134 @@ void handleZoom(int direction) {
 }
 
 void updateCamera() {
-    gluLookAt(posX, posY, posZ,
-        posX + dirX, posY + dirY, posZ + dirZ,
-        0.0f, 1.0f, 0.0f);
+    if (isThirdPerson)
+    {
+        float rad = carAngle * 3.14159f / 180.0f;
+        float camDist = 25.0f;
+        float camHeight = 10.0f;
+
+        // calculam pozitia camerei relativ la masina
+        float cX = carX - sin(rad) * camDist;
+        float cZ = carZ - cos(rad) * camDist;
+        float cY = getTerrainHeight(cX, cZ) + camHeight;
+
+        gluLookAt(cX, cY, cZ,
+            carX, getTerrainHeight(carX, carZ) + 2.0f, carZ,
+            0.0f, 1.0f, 0.0f);
+    }
+    else {
+
+        gluLookAt(posX, posY, posZ,
+            posX + dirX, posY + dirY, posZ + dirZ,
+            0.0f, 1.0f, 0.0f);
+    }
 }
 
 void handleKeyboard(unsigned char key, int x, int y) {
-    float speed = 1.5f;
+    if (key == 'c' || key == 'C')
+    {
+        isThirdPerson = !isThirdPerson;
+    }
+    
+    if (!isThirdPerson)
+    {
+        float speed = 1.5f;
 
-    float horizontalLength = sqrt(dirX * dirX + dirZ * dirZ);
-    float fwdX = dirX / horizontalLength;
-    float fwdZ = dirZ / horizontalLength;
+        float horizontalLength = sqrt(dirX * dirX + dirZ * dirZ);
+        float fwdX = dirX / horizontalLength;
+        float fwdZ = dirZ / horizontalLength;
 
-    float rightX = -fwdZ;
-    float rightZ = fwdX;
+        float rightX = -fwdZ;
+        float rightZ = fwdX;
 
-    switch (key) {
-    case 'w': case 'W': 
-        posX += fwdX * speed;
-        posZ += fwdZ * speed;
-        break;
-    case 's': case 'S': 
-        posX -= fwdX * speed;
-        posZ -= fwdZ * speed;
-        break;
-    case 'a': case 'A': 
-        posX -= rightX * speed;
-        posZ -= rightZ * speed;
-        break;
-    case 'd': case 'D': 
-        posX += rightX * speed;
-        posZ += rightZ * speed;
-        break;
-    case 'q': case 'Q': 
-        posY -= speed;
-        break;
-    case 'e': case 'E':
-        posY += speed;
-        break;
+        switch (key) {
+        case 'w': case 'W':
+            posX += fwdX * speed;
+            posZ += fwdZ * speed;
+            break;
+        case 's': case 'S':
+            posX -= fwdX * speed;
+            posZ -= fwdZ * speed;
+            break;
+        case 'a': case 'A':
+            posX -= rightX * speed;
+            posZ -= rightZ * speed;
+            break;
+        case 'd': case 'D':
+            posX += rightX * speed;
+            posZ += rightZ * speed;
+            break;
+        case 'q': case 'Q':
+            posY -= speed;
+            break;
+        case 'e': case 'E':
+            posY += speed;
+            break;
+        }
+    }
+    glutPostRedisplay();
+}
+
+//void handleSpecialKeyboard(int key, int x, int y) {
+//    float carSpeed = 1.2f;
+//    float rotationSpeed = 3.0f;
+//    float rad = carAngle * 3.14159f / 180.0f;
+//
+//    switch (key) {
+//    case GLUT_KEY_UP:
+//        carX += sin(rad) * carSpeed;
+//        carZ += cos(rad) * carSpeed;
+//        break;
+//    case GLUT_KEY_DOWN:
+//        carX -= sin(rad) * carSpeed;
+//        carZ -= cos(rad) * carSpeed;
+//        break;
+//    case GLUT_KEY_LEFT:
+//        carAngle += rotationSpeed;
+//        break;
+//    case GLUT_KEY_RIGHT:
+//        carAngle -= rotationSpeed;
+//        break;
+//    }
+//    glutPostRedisplay();
+//}
+
+void updateCarLogic() {
+    float carSpeed = 1.5f;      // viteza de deplasare
+    float rotationSpeed = 2.5f; // viteza de rotatie
+    float rad = carAngle * 3.14159f / 180.0f;
+
+    float nextX = carX;
+    float nextZ = carZ;
+
+
+    if (specialKeys[GLUT_KEY_UP]) {
+        nextX += sin(rad) * carSpeed;
+        nextZ += cos(rad) * carSpeed;
+    }
+    if (specialKeys[GLUT_KEY_DOWN]) {
+        nextX -= sin(rad) * carSpeed;
+        nextZ -= cos(rad) * carSpeed;
+    }
+    if (specialKeys[GLUT_KEY_LEFT]) {
+        carAngle += rotationSpeed;
+    }
+    if (specialKeys[GLUT_KEY_RIGHT]) {
+        carAngle -= rotationSpeed;
     }
 
-    glutPostRedisplay();
+    if (!checkCollision(nextX, nextZ)) {
+        carX = nextX;
+        carZ = nextZ;
+    }
+
+    if (isThirdPerson) glutPostRedisplay();
+}
+
+void handleSpecialKeyboard(int key, int x, int y) {
+    if (key >= 0 && key < 256) specialKeys[key] = true;
+}
+
+void handleSpecialUp(int key, int x, int y) {
+    if (key >= 0 && key < 256) specialKeys[key] = false;
 }

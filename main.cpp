@@ -28,7 +28,20 @@ void initLighting() {
     glLightfv(GL_LIGHT1, GL_DIFFUSE, diffusePole);
 }
 
+void timer(int value) {
+    updateCarLogic();
+    updateRandomObjects();
+
+    updateCircuitCars();
+
+    glutPostRedisplay();
+
+    glutTimerFunc(16, timer, 0);
+}
+
 void display() {
+    /*updateCarLogic();
+    updateRandomObjects();*/
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
     glLoadIdentity();
     updateCamera();
@@ -63,6 +76,9 @@ void display() {
         glMultMatrixf(shadowMat);
         drawStaticObjects();
         drawLightPole(polePos[0], polePos[2]);
+        drawCar(carX, carZ, carAngle);
+        drawMovingObjects();
+        drawCircuitCars();
     glPopMatrix();
 
 
@@ -72,6 +88,9 @@ void display() {
         glMultMatrixf(shadowMat);
         drawStaticObjects();
         drawLightPole(polePos[0], polePos[2]);
+        drawCar(carX, carZ, carAngle);
+        drawMovingObjects();
+        drawCircuitCars();
     glPopMatrix();
 
     glEnable(GL_DEPTH_TEST);
@@ -83,6 +102,10 @@ void display() {
 
     drawStaticObjects();
     drawLightPole(polePos[0], polePos[2]);
+
+    drawCar(carX, carZ, carAngle);
+    drawMovingObjects();
+    drawCircuitCars();
 
     glutSwapBuffers();
 }
@@ -129,6 +152,11 @@ int main(int argc, char** argv) {
     glutSetCursor(GLUT_CURSOR_NONE); // ascunde cursor mouse
     glutKeyboardFunc(handleKeyboard);
     glutMouseWheelFunc(mouseWheel);
+
+    glutSpecialFunc(handleSpecialKeyboard);
+    glutSpecialUpFunc(handleSpecialUp);
+
+    glutTimerFunc(0, timer, 0);
 
     glutMainLoop();
     return 0;
